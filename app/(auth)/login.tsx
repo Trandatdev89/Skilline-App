@@ -9,16 +9,20 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    ActivityIndicator,
 } from 'react-native';
 
 import {SafeAreaView} from 'react-native-safe-area-context';
+import { useAuth } from '@/hooks/useAuth';
 
 const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [errors, setErrors] = useState({username: '', password: ''});
+    const [isLoading, setIsLoading] = useState(false);
+    const { setAuthToken } = useAuth();
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
         // Validate inputs
         const newErrors = {username: '', password: ''};
         let hasError = false;
@@ -35,17 +39,46 @@ const Login = () => {
 
         setErrors(newErrors);
 
-        if (!hasError) {
-            // Giả lập đăng nhập thành công
+        if (hasError) return;
+
+        try {
+            setIsLoading(true);
+
+            // TODO: Thay thế bằng API call thực tế
+            // const response = await fetch('https://your-api.com/login', {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify({ username, password }),
+            // });
+            // const data = await response.json();
+
+            // Giả lập API response
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const mockToken = `token_${Date.now()}`;
+            const expiresInSeconds = 24 * 60 * 60; // 24 giờ
+
+            // Lưu token
+            await setAuthToken(mockToken, expiresInSeconds);
+
             Alert.alert(
                 'Đăng nhập thành công',
                 `Chào mừng ${username}!`,
-                [{text: 'OK'}]
+                [{
+                    text: 'OK',
+                    onPress: () => {
+                        // Reset form
+                        setUsername('');
+                        setPassword('');
+                        setErrors({username: '', password: ''});
+                        // Navigation sẽ tự động trigger từ useProtectedRoute
+                    }
+                }]
             );
-            // Reset form
-            setUsername('');
-            setPassword('');
-            setErrors({username: '', password: ''});
+        } catch (error) {
+            Alert.alert('Lỗi', 'Đăng nhập thất bại. Vui lòng thử lại.');
+            console.error('Login error:', error);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -116,10 +149,15 @@ const Login = () => {
 
                         {/* Submit Button */}
                         <TouchableOpacity
-                            style={styles.submitButton}
+                            style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
                             onPress={handleLogin}
-                            activeOpacity={0.8}>
-                            <Text style={styles.submitButtonText}>Đăng nhập</Text>
+                            activeOpacity={0.8}
+                            disabled={isLoading}>
+                            {isLoading ? (
+                                <ActivityIndicator color="#fff" size="small" />
+                            ) : (
+                                <Text style={styles.submitButtonText}>Đăng nhập</Text>
+                            )}
                         </TouchableOpacity>
 
                         {/* Register Link */}
@@ -221,6 +259,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 16,
+    },
+    submitButtonDisabled: {
+        opacity: 0.6,
     },
     submitButtonText: {
         color: '#fff',

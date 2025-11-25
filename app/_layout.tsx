@@ -1,41 +1,23 @@
 import { Stack } from 'expo-router';
 import 'react-native-reanimated';
-import { useEffect, useState } from 'react';
-import  useProtectedRoute  from '@/hooks/useProtectedRoute';
+import { ActivityIndicator, View } from 'react-native';
+import useProtectedRoute from '@/hooks/useProtectedRoute';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function RootLayout() {
-    // const [isAuthenticated, setIsAuthenticated] = useState(false);
-    // const [isLoading, setIsLoading] = useState(true);
-    //
-    // // Kiểm tra authentication khi app khởi động
-    // useEffect( () => {
-    //      checkAuth();
-    // }, []);
-    //
-    // const checkAuth = async () => {
-    //     try {
-    //         // Kiểm tra AsyncStorage hoặc SecureStore
-    //         // const token = await AsyncStorage.getItem('userToken');
-    //         // const token = await SecureStore.getItemAsync('userToken');
-    //
-    //         // Giả lập check auth
-    //         setTimeout(() => {
-    //             setIsAuthenticated(false); // Đổi thành true để test đã login
-    //             setIsLoading(false);
-    //         }, 1000);
-    //     } catch (error) {
-    //         console.error('Auth check error:', error);
-    //         setIsLoading(false);
-    //     }
-    // };
-    //
-    // // ✅ GỌI HOOK CHỈ 1 LẦN Ở ĐÂY
-    // useProtectedRoute(isAuthenticated);
-    //
-    // // Hiển thị loading screen
-    // if (isLoading) {
-    //     return null; // Hoặc return <SplashScreen />
-    // }
+    const { isAuthenticated, isLoading } = useAuth();
+
+    // ✅ GỌI HOOK CHỈ 1 LẦN Ở ĐÂY - kiểm tra route và redirect nếu cần
+    useProtectedRoute(isAuthenticated);
+
+    // Hiển thị loading screen
+    if (isLoading) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#007AFF" />
+            </View>
+        );
+    }
 
     return (
         <Stack screenOptions={{ headerShown: false }}>

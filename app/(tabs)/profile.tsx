@@ -1,7 +1,32 @@
-import {View, Text, ScrollView, StyleSheet, Image, TouchableOpacity} from 'react-native';
+import {View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert} from 'react-native';
 import {Ionicons} from '@expo/vector-icons';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Profile() {
+    const { logout } = useAuth();
+
+    const handleLogout = async () => {
+        Alert.alert(
+            'Đăng xuất',
+            'Bạn có chắc chắn muốn đăng xuất?',
+            [
+                { text: 'Hủy', style: 'cancel' },
+                {
+                    text: 'Đăng xuất',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await logout();
+                            // Navigation sẽ tự động trigger từ useProtectedRoute
+                        } catch {
+                            Alert.alert('Lỗi', 'Không thể đăng xuất. Vui lòng thử lại.');
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
     return (
         <ScrollView style={styles.container}>
             {/* Profile Header */}
@@ -38,7 +63,6 @@ export default function Profile() {
                     {icon: 'person-outline', label: 'Edit Profile'},
                     {icon: 'heart-outline', label: 'Favorites'},
                     {icon: 'bookmark-outline', label: 'Saved'},
-                    {icon: 'log-out-outline', label: 'Logout'},
                 ].map((item:any, index) => (
                     <TouchableOpacity key={index} style={styles.menuItem}>
                         <Ionicons name={item.icon} size={24} color="#333" />
@@ -46,6 +70,16 @@ export default function Profile() {
                         <Ionicons name="chevron-forward" size={20} color="#999" />
                     </TouchableOpacity>
                 ))}
+                
+                {/* Logout Button */}
+                <TouchableOpacity 
+                    style={[styles.menuItem, styles.logoutItem]}
+                    onPress={handleLogout}
+                >
+                    <Ionicons name="log-out-outline" size={24} color="#ef4444" />
+                    <Text style={[styles.menuText, styles.logoutText]}>Logout</Text>
+                    <Ionicons name="chevron-forward" size={20} color="#ef4444" />
+                </TouchableOpacity>
             </View>
         </ScrollView>
     );
@@ -123,5 +157,12 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#333',
         marginLeft: 16,
+    },
+    logoutItem: {
+        marginTop: 10,
+        borderBottomWidth: 0,
+    },
+    logoutText: {
+        color: '#ef4444',
     },
 });
