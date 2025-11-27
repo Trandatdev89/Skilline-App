@@ -1,6 +1,6 @@
-import {View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert} from 'react-native';
-import {Ionicons} from '@expo/vector-icons';
 import { useAuth } from '@/hooks/useAuth';
+import { Ionicons } from '@expo/vector-icons';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function Profile() {
     const { logout } = useAuth();
@@ -59,20 +59,20 @@ export default function Profile() {
             {/* Menu Items */}
             <View style={styles.menuContainer}>
                 {[
-                    {icon: 'settings-outline', label: 'Settings'},
-                    {icon: 'person-outline', label: 'Edit Profile'},
-                    {icon: 'heart-outline', label: 'Favorites'},
-                    {icon: 'bookmark-outline', label: 'Saved'},
-                ].map((item:any, index) => (
+                    { icon: 'settings-outline', label: 'Settings' },
+                    { icon: 'person-outline', label: 'Edit Profile' },
+                    { icon: 'heart-outline', label: 'Favorites' },
+                    { icon: 'bookmark-outline', label: 'Saved' },
+                ].map((item: any, index) => (
                     <TouchableOpacity key={index} style={styles.menuItem}>
                         <Ionicons name={item.icon} size={24} color="#333" />
                         <Text style={styles.menuText}>{item.label}</Text>
                         <Ionicons name="chevron-forward" size={20} color="#999" />
                     </TouchableOpacity>
                 ))}
-                
+
                 {/* Logout Button */}
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[styles.menuItem, styles.logoutItem]}
                     onPress={handleLogout}
                 >

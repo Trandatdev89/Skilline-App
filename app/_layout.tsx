@@ -1,11 +1,13 @@
-import { Stack } from 'expo-router';
-import 'react-native-reanimated';
-import { ActivityIndicator, View } from 'react-native';
-import useProtectedRoute from '@/hooks/useProtectedRoute';
 import { useAuth } from '@/hooks/useAuth';
+import useProtectedRoute from '@/hooks/useProtectedRoute';
+import { Stack } from 'expo-router';
+import { ActivityIndicator, View } from 'react-native';
+import 'react-native-reanimated';
 
 export default function RootLayout() {
     const { isAuthenticated, isLoading } = useAuth();
+
+    console.log(isAuthenticated);
 
     // ✅ GỌI HOOK CHỈ 1 LẦN Ở ĐÂY - kiểm tra route và redirect nếu cần
     useProtectedRoute(isAuthenticated);

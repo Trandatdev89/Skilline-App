@@ -1,6 +1,6 @@
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import {
-    Alert,
+    ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
     StatusBar,
@@ -8,25 +8,26 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
-    ActivityIndicator,
+    View
 } from 'react-native';
 
-import {SafeAreaView} from 'react-native-safe-area-context';
+import { AuthApi } from '@/api/AuthApi';
 import { useAuth } from '@/hooks/useAuth';
+import AlertService from '@/services/AlertService';
 import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [errors, setErrors] = useState({username: '', password: ''});
+    const [errors, setErrors] = useState({ username: '', password: '' });
     const [isLoading, setIsLoading] = useState(false);
     const { setAuthToken } = useAuth();
     const router = useRouter();
 
     const handleLogin = async () => {
         // Validate inputs
-        const newErrors = {username: '', password: ''};
+        const newErrors = { username: '', password: '' };
         let hasError = false;
 
         if (!username.trim()) {
@@ -46,39 +47,28 @@ const Login = () => {
         try {
             setIsLoading(true);
 
-            // TODO: Thay thế bằng API call thực tế
-            // const response = await fetch('https://your-api.com/login', {
-            //     method: 'POST',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify({ username, password }),
-            // });
-            // const data = await response.json();
+            const resp = await AuthApi.login({ username, password });
 
-            // Giả lập API response
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const mockToken = `token_${Date.now()}`;
-            const expiresInSeconds = 24 * 60 * 60; // 24 giờ
 
-            // Lưu token
-            await setAuthToken(mockToken, expiresInSeconds);
+            if (resp.code === 200 && resp.data) {
+                const accessToken = resp.data.accessToken;
+                const refreshToken = resp.data.refreshToken!;
 
-            Alert.alert(
-                'Đăng nhập thành công',
-                `Chào mừng ${username}!`,
-                [{
-                    text: 'OK',
-                    onPress: () => {
-                        // Reset form
-                        setUsername('');
-                        setPassword('');
-                        setErrors({username: '', password: ''});
-                        // Navigation sẽ tự động trigger từ useProtectedRoute
-                    }
-                }]
-            );
+                await setAuthToken(accessToken, refreshToken);
+
+
+                AlertService.howMessage('Đăng nhập thành công', resp.message, () => {
+                    setUsername('');
+                    setPassword('');
+                    setErrors({ username: '', password: '' });
+                    router.push('/');
+                })
+
+            } else {
+                AlertService.howMessage('Đăng nhập thất bại', resp.message)
+            }
         } catch (error) {
-            Alert.alert('Lỗi', 'Đăng nhập thất bại. Vui lòng thử lại.');
-            console.error('Login error:', error);
+            AlertService.howMessage('Đăng nhập thất bại.Vui long thu lai')
         } finally {
             setIsLoading(false);
         }
@@ -86,7 +76,7 @@ const Login = () => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5"/>
+            <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.keyboardView}>
@@ -145,7 +135,7 @@ const Login = () => {
                         </View>
 
                         {/* Forgot Password */}
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.forgotPassword}
                             onPress={() => router.push('/forgot-password')}
                         >

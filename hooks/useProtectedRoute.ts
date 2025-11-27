@@ -10,8 +10,10 @@ function useProtectedRoute(isAuthenticated: boolean) {
     const segments = useSegments();
     const router = useRouter();
 
+    console.log(isAuthenticated);
+
     useEffect(() => {
-        // ✅ CHỜ ROUTER SẴN SÀNG và SEGMENTS đã LOAD
+
         if (!router || segments.length === 0) return;
 
         const inAuthGroup = segments[0] === '(auth)';

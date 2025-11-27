@@ -1,18 +1,18 @@
+import { AuthApi } from '@/api/AuthApi';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    View,
-    Text,
-    TextInput,
-    StyleSheet,
-    TouchableOpacity,
-    ScrollView,
+    ActivityIndicator,
+    Alert,
     KeyboardAvoidingView,
     Platform,
-    Alert,
-    ActivityIndicator,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { AuthApi } from '@/api/AuthApi';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface FormErrors {
@@ -173,55 +173,35 @@ export default function RegisterScreen() {
         try {
             setIsLoading(true);
 
-            // Use AuthApi to call backend (ensures correct baseURL)
-            try {
-                const apiResp = await AuthApi.register(formData as any);
-                // Log full response for debugging
-                console.log('Register response:', apiResp);
+            const apiResp = await AuthApi.register(formData as any);
 
-                // apiResp can be an object { message, code } or a string (plain text)
-                let message = 'Đăng ký thành công';
-                let code = 200;
+            console.log('Register response:', apiResp);
 
-                if (typeof apiResp === 'string') {
-                    message = apiResp;
-                } else if (apiResp && typeof apiResp === 'object') {
-                    message = apiResp.message ?? JSON.stringify(apiResp);
-                    code = apiResp.code ?? 200;
-                }
-
-                // Always show server message (success or server-side error message)
-                Alert.alert(code === 200 ? 'Thành công' : 'Lỗi', message, [
-                    {
-                        text: 'OK',
-                        onPress: () => {
-                            if (code === 200) router.push('/login');
-                        },
-                    },
-                ]);
-            } catch (err: any) {
-                // axios throws for non-2xx or network errors. Try to extract server message when available.
-                console.error('Register error (catch):', err);
-                const resp = err?.response;
-                let serverMessage = 'Đăng ký thất bại. Vui lòng thử lại.';
-
-                if (resp) {
-                    // If server returned JSON with message
-                    if (resp.data && typeof resp.data === 'object' && resp.data.message) {
-                        serverMessage = resp.data.message;
-                    } else if (typeof resp.data === 'string') {
-                        serverMessage = resp.data;
-                    } else if (resp.statusText) {
-                        serverMessage = resp.statusText;
-                    } else {
-                        serverMessage = `Lỗi: ${resp.status}`;
+            const showMessage = (title: string, message?: string, onOk?: () => void) => {
+                if (Platform.OS === 'web' && typeof window !== 'undefined' && window.alert) {
+                    try {
+                        window.alert(`${title}\n\n${message ?? ''}`);
+                        if (onOk) onOk();
+                    } catch (e) {
+                        // fallback to console if alert is blocked
+                        console.log('Alert fallback:', title, message);
+                        if (onOk) onOk();
                     }
-                } else if (err?.message) {
-                    serverMessage = err.message;
+                } else {
+                    Alert.alert(title, message ?? '', [
+                        { text: 'OK', onPress: onOk },
+                    ]);
                 }
+            };
 
-                Alert.alert('Lỗi', serverMessage);
-            }
+            // Normalize response: support string or object
+            const code = typeof apiResp === 'object' && apiResp?.code ? apiResp.code : 200;
+            const message = typeof apiResp === 'object' ? apiResp?.message ?? JSON.stringify(apiResp) : String(apiResp);
+
+            showMessage(code === 200 ? 'Thành công' : 'Lỗi', message, () => {
+                if (code === 200) router.push('/login');
+            });
+
         } catch (error) {
             Alert.alert('Lỗi', 'Đăng ký thất bại. Vui lòng thử lại.');
             console.error('Register error:', error);

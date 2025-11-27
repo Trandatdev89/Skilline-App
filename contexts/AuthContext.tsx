@@ -1,5 +1,5 @@
-import React, { createContext, useContext, ReactNode } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import React, { createContext, ReactNode, useContext } from 'react';
 
 interface AuthContextType {
   isAuthenticated: boolean;

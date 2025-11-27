@@ -1,17 +1,16 @@
-import { useEffect, useState } from 'react';
+import AuthApi from '@/api/AuthApi';
+import { TokenType } from '@/enums/TokenType';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useState } from 'react';
 
-interface AuthToken {
-  token: string;
-  expiresAt: number;
-}
+
 
 interface UseAuthReturn {
   isAuthenticated: boolean;
   isLoading: boolean;
   token: string | null;
   logout: () => Promise<void>;
-  setAuthToken: (token: string, expiresInSeconds: number) => Promise<void>;
+  setAuthToken: (token: string, refreshToken: string) => Promise<void>;
 }
 
 export function useAuth(): UseAuthReturn {
@@ -27,32 +26,27 @@ export function useAuth(): UseAuthReturn {
   const checkAuth = async () => {
     try {
       setIsLoading(true);
-      const storedToken = await AsyncStorage.getItem('authToken');
+      const accessToken = await AsyncStorage.getItem('accessToken');
 
-      if (!storedToken) {
-        // Không có token
+      if (!accessToken) {
         setIsAuthenticated(false);
         setToken(null);
         return;
       }
 
       try {
-        const authData: AuthToken = JSON.parse(storedToken);
-        const now = Date.now();
 
-        // Kiểm tra token có hết hạn không
-        if (authData.expiresAt && authData.expiresAt < now) {
-          // Token đã hết hạn
-          console.log('Token expired');
-          await AsyncStorage.removeItem('authToken');
-          setIsAuthenticated(false);
-          setToken(null);
-          return;
+        const tokenRequest = {
+          accessToken: accessToken,
+          tokenType: TokenType.ACCESS_TOKEN
         }
 
-        // Token còn hiệu lực
-        setIsAuthenticated(true);
-        setToken(authData.token);
+        const resApi = await AuthApi.introspectToken(tokenRequest);
+
+        if (resApi.data) {
+          setIsAuthenticated(resApi.data);
+        }
+
       } catch (parseError) {
         console.error('Error parsing token:', parseError);
         await AsyncStorage.removeItem('authToken');
@@ -68,15 +62,11 @@ export function useAuth(): UseAuthReturn {
     }
   };
 
-  const setAuthToken = async (newToken: string, expiresInSeconds: number) => {
+  const setAuthToken = async (newToken: string, refreshToken: string) => {
     try {
-      const expiresAt = Date.now() + expiresInSeconds * 1000;
-      const authData: AuthToken = {
-        token: newToken,
-        expiresAt,
-      };
 
-      await AsyncStorage.setItem('authToken', JSON.stringify(authData));
+      await AsyncStorage.setItem('accessToken', newToken);
+      await AsyncStorage.setItem('refreshToken', refreshToken);
       setIsAuthenticated(true);
       setToken(newToken);
     } catch (error) {
@@ -87,7 +77,8 @@ export function useAuth(): UseAuthReturn {
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('authToken');
+      await AsyncStorage.removeItem('accessToken');
+      await AsyncStorage.removeItem('refreshToken');
       setIsAuthenticated(false);
       setToken(null);
     } catch (error) {
