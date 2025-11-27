@@ -14,6 +14,7 @@ import {
 
 import {SafeAreaView} from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'expo-router';
 
 const Login = () => {
     const [username, setUsername] = useState('');
@@ -21,6 +22,7 @@ const Login = () => {
     const [errors, setErrors] = useState({username: '', password: ''});
     const [isLoading, setIsLoading] = useState(false);
     const { setAuthToken } = useAuth();
+    const router = useRouter();
 
     const handleLogin = async () => {
         // Validate inputs
@@ -143,7 +145,10 @@ const Login = () => {
                         </View>
 
                         {/* Forgot Password */}
-                        <TouchableOpacity style={styles.forgotPassword}>
+                        <TouchableOpacity 
+                            style={styles.forgotPassword}
+                            onPress={() => router.push('/forgot-password')}
+                        >
                             <Text style={styles.forgotPasswordText}>Quên mật khẩu?</Text>
                         </TouchableOpacity>
 
@@ -163,7 +168,7 @@ const Login = () => {
                         {/* Register Link */}
                         <View style={styles.registerContainer}>
                             <Text style={styles.registerText}>Chưa có tài khoản? </Text>
-                            <TouchableOpacity>
+                            <TouchableOpacity onPress={() => router.push('/register')}>
                                 <Text style={styles.registerLink}>Đăng ký ngay</Text>
                             </TouchableOpacity>
                         </View>

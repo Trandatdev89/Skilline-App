@@ -11,8 +11,8 @@ function useProtectedRoute(isAuthenticated: boolean) {
     const router = useRouter();
 
     useEffect(() => {
-        // ✅ CHỜ ROUTER SẴN SÀNG
-        if (!router) return;
+        // ✅ CHỜ ROUTER SẴN SÀNG và SEGMENTS đã LOAD
+        if (!router || segments.length === 0) return;
 
         const inAuthGroup = segments[0] === '(auth)';
 
@@ -23,12 +23,11 @@ function useProtectedRoute(isAuthenticated: boolean) {
             if (!isAuthenticated && !inAuthGroup) {
                 // Chưa đăng nhập và KHÔNG ở trang auth -> redirect về login
                 console.log('Redirecting to login - not authenticated');
-                router.replace('/(auth)/login');
-            } else if (isAuthenticated && inAuthGroup) {
-                // Đã đăng nhập nhưng VẪN ở trang auth -> redirect về home
-                console.log('Redirecting to home - authenticated');
-                router.replace('/(tabs)/index');
+                // Use plain path (no grouping parentheses) so web routes match: /login
+                router.replace('/login');
             }
+            // NOTE: Do NOT auto-redirect authenticated users away from auth pages.
+            // This keeps `/login` and `/register` accessible by default when opening the app.
         }, 100); // Delay 100ms
 
         return () => clearTimeout(timeout);
