@@ -49,7 +49,8 @@ export function useAuth(): UseAuthReturn {
 
       } catch (parseError) {
         console.error('Error parsing token:', parseError);
-        await AsyncStorage.removeItem('authToken');
+        await AsyncStorage.removeItem('accessToken');
+        await AsyncStorage.removeItem('refreshToken');
         setIsAuthenticated(false);
         setToken(null);
       }
@@ -64,11 +65,12 @@ export function useAuth(): UseAuthReturn {
 
   const setAuthToken = async (newToken: string, refreshToken: string) => {
     try {
-
+      console.log('[useAuth] Setting auth token...');
       await AsyncStorage.setItem('accessToken', newToken);
       await AsyncStorage.setItem('refreshToken', refreshToken);
       setIsAuthenticated(true);
       setToken(newToken);
+      console.log('[useAuth] Auth token set, isAuthenticated:', true);
     } catch (error) {
       console.error('Error saving token:', error);
       throw error;

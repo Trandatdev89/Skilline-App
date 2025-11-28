@@ -6,7 +6,7 @@ interface AuthContextType {
   isLoading: boolean;
   token: string | null;
   logout: () => Promise<void>;
-  setAuthToken: (token: string, expiresInSeconds: number) => Promise<void>;
+  setAuthToken: (token: string, refreshToken: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

@@ -1,6 +1,7 @@
 import { AuthResponse } from '@/type/AuthType/AuthResponse';
 import { LoginRequest } from '@/type/AuthType/LoginRequest';
 import { RegisterRequest } from '@/type/AuthType/RegisterRequest';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
 // Read BASE_URL from environment or fallback to localhost
@@ -14,11 +15,30 @@ const api = axios.create({
     },
 });
 
+// Attach access token (if present) to all requests
+api.interceptors.request.use(async (config) => {
+    try {
+        const token = await AsyncStorage.getItem('accessToken');
+        if (token && config && config.headers) {
+            config.headers['Authorization'] = `Bearer ${token}`;
+        }
+    } catch (err) {
+        // ignore
+    }
+    return config;
+}, (error) => Promise.reject(error));
+
 
 export interface ApiResponse<T = any> {
     message: string;
     code: number;
     data?: T;
+}
+
+export interface UserEntity {
+    email?: string;
+    phone?: string;
+    fullname?: string;
 }
 
 async function register(registerDTO: RegisterRequest): Promise<ApiResponse> {
@@ -36,10 +56,16 @@ async function introspectToken(introspectDto: any): Promise<ApiResponse<boolean>
     return res.data as ApiResponse<boolean>;
 }
 
+async function getUserInfo(): Promise<ApiResponse<UserEntity>> {
+    const res = await api.get('/api/user/info');
+    return res.data as ApiResponse<UserEntity>;
+}
+
 export const AuthApi = {
     register,
     login,
     introspectToken
+    , getUserInfo
 };
 
 export default AuthApi;

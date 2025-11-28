@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 
 import { AuthApi } from '@/api/AuthApi';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthContext } from '@/contexts/AuthContext';
 import AlertService from '@/services/AlertService';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,7 +22,7 @@ const Login = () => {
     const [password, setPassword] = useState('');
     const [errors, setErrors] = useState({ username: '', password: '' });
     const [isLoading, setIsLoading] = useState(false);
-    const { setAuthToken } = useAuth();
+    const { setAuthToken } = useAuthContext();
     const router = useRouter();
 
     const handleLogin = async () => {
@@ -55,14 +55,11 @@ const Login = () => {
                 const refreshToken = resp.data.refreshToken!;
 
                 await setAuthToken(accessToken, refreshToken);
+                setUsername('');
+                setPassword('');
+                setErrors({ username: '', password: '' });
 
-
-                AlertService.howMessage('Đăng nhập thành công', resp.message, () => {
-                    setUsername('');
-                    setPassword('');
-                    setErrors({ username: '', password: '' });
-                    router.push('/');
-                })
+                AlertService.howMessage('Đăng nhập thành công', resp.message);
 
             } else {
                 AlertService.howMessage('Đăng nhập thất bại', resp.message)

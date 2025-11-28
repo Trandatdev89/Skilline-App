@@ -1,23 +1,23 @@
-import {Tabs} from 'expo-router';
-import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
-import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
-import {Ionicons} from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
 import React from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function CustomHeader() {
     return (
         <SafeAreaView edges={['top']} style={styles.headerContainer}>
             <View style={styles.header}>
                 <View style={styles.logoContainer}>
-                    <View style={styles.logoIcon}/>
+                    <View style={styles.logoIcon} />
                     <Text style={styles.logoText}>Skilline</Text>
                 </View>
                 <View style={styles.headerRight}>
                     <TouchableOpacity style={styles.iconButton}>
-                        <Ionicons name="search" size={24} color="#000"/>
+                        <Ionicons name="search" size={24} color="#000" />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.iconButton}>
-                        <Ionicons name="notifications" size={24} color="#000"/>
+                        <Ionicons name="notifications" size={24} color="#000" />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -31,7 +31,7 @@ export default function TabsLayout() {
     return (
         <Tabs
             screenOptions={{
-                header: () => <CustomHeader/>,
+                header: () => <CustomHeader />,
                 tabBarActiveTintColor: '#007AFF',
                 tabBarInactiveTintColor: '#999',
                 tabBarStyle: {
@@ -52,8 +52,8 @@ export default function TabsLayout() {
                 name="index"
                 options={{
                     title: 'Home',
-                    tabBarIcon: ({color, size}) => (
-                        <Ionicons name="home" size={size} color={color}/>
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="home" size={size} color={color} />
                     ),
                 }}
             />
@@ -61,8 +61,8 @@ export default function TabsLayout() {
                 name="search"
                 options={{
                     title: 'Search',
-                    tabBarIcon: ({color, size}) => (
-                        <Ionicons name="search" size={size} color={color}/>
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="search" size={size} color={color} />
                     ),
                 }}
             />
@@ -70,8 +70,8 @@ export default function TabsLayout() {
                 name="course"
                 options={{
                     title: 'Course',
-                    tabBarIcon: ({color, size}) => (
-                        <Ionicons name="book" size={size} color={color}/>
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="book" size={size} color={color} />
                     ),
                 }}
             />
@@ -79,8 +79,8 @@ export default function TabsLayout() {
                 name="profile"
                 options={{
                     title: 'Profile',
-                    tabBarIcon: ({color, size}) => (
-                        <Ionicons name="person" size={size} color={color}/>
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="person" size={size} color={color} />
                     ),
                 }}
             />
@@ -89,9 +89,16 @@ export default function TabsLayout() {
                 options={{
                     title: 'Lecture',
                     href: null, // ← Thêm dòng này để ẩn khỏi bottom nav
-                    tabBarIcon: ({color, size}) => (
-                        <Ionicons name="book" size={size} color={color}/>
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="book" size={size} color={color} />
                     ),
+                }}
+            />
+            <Tabs.Screen
+                name="order"
+                options={{
+                    title: 'Order',
+                    href: null, // hide from bottom nav
                 }}
             />
         </Tabs>

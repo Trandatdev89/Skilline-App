@@ -2,35 +2,28 @@ import { useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
-/**
- * Hook để bảo vệ route - redirect dựa vào authentication state
- * @param isAuthenticated - Người dùng đã đăng nhập hay chưa
- */
+
 function useProtectedRoute(isAuthenticated: boolean) {
     const segments = useSegments();
     const router = useRouter();
 
-    console.log(isAuthenticated);
-
     useEffect(() => {
 
-        if (!router || segments.length === 0) return;
+        if (!router) return;
 
-        const inAuthGroup = segments[0] === '(auth)';
+        // ✅ Check both grouped paths like '(auth)' AND plain paths like 'login', 'register', 'forgot-password'
+        const authPages = ['(auth)', 'login', 'register', 'forgot-password'];
+        const inAuthPage = segments.length > 0 && authPages.includes(segments[0]);
 
-        console.log('Route segments:', segments, 'isAuth:', isAuthenticated, 'inAuthGroup:', inAuthGroup);
-
-        // ✅ TIMEOUT ĐỂ ĐẢM BẢO NAVIGATION ĐÃ MOUNT
         const timeout = setTimeout(() => {
-            if (!isAuthenticated && !inAuthGroup) {
-                // Chưa đăng nhập và KHÔNG ở trang auth -> redirect về login
-                console.log('Redirecting to login - not authenticated');
-                // Use plain path (no grouping parentheses) so web routes match: /login
+
+            if (isAuthenticated && inAuthPage) {
+                router.replace('/');
+            }
+            else if (!isAuthenticated && !inAuthPage) {
                 router.replace('/login');
             }
-            // NOTE: Do NOT auto-redirect authenticated users away from auth pages.
-            // This keeps `/login` and `/register` accessible by default when opening the app.
-        }, 100); // Delay 100ms
+        }, 100);
 
         return () => clearTimeout(timeout);
     }, [isAuthenticated, segments, router]);

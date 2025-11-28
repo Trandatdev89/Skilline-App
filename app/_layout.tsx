@@ -1,18 +1,16 @@
-import { useAuth } from '@/hooks/useAuth';
+import { AuthProvider, useAuthContext } from '@/contexts/AuthContext';
 import useProtectedRoute from '@/hooks/useProtectedRoute';
 import { Stack } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
 
-export default function RootLayout() {
-    const { isAuthenticated, isLoading } = useAuth();
+function RootLayoutContent() {
+    const { isAuthenticated, isLoading } = useAuthContext();
 
-    console.log(isAuthenticated);
+    console.log('[RootLayout] isAuthenticated:', isAuthenticated, 'isLoading:', isLoading);
 
-    // ✅ GỌI HOOK CHỈ 1 LẦN Ở ĐÂY - kiểm tra route và redirect nếu cần
     useProtectedRoute(isAuthenticated);
 
-    // Hiển thị loading screen
     if (isLoading) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -26,5 +24,13 @@ export default function RootLayout() {
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="(tabs)" />
         </Stack>
+    );
+}
+
+export default function RootLayout() {
+    return (
+        <AuthProvider>
+            <RootLayoutContent />
+        </AuthProvider>
     );
 }
