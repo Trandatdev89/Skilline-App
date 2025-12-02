@@ -1,9 +1,11 @@
 import { useAuth } from '@/hooks/useAuth';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function Profile() {
     const { logout } = useAuth();
+    const router = useRouter();
 
     const handleLogout = async () => {
         Alert.alert(
@@ -59,12 +61,17 @@ export default function Profile() {
             {/* Menu Items */}
             <View style={styles.menuContainer}>
                 {[
-                    { icon: 'settings-outline', label: 'Settings' },
+                    { icon: 'cart-outline', label: 'Khoá học đã mua', action: 'purchased' },
                     { icon: 'person-outline', label: 'Edit Profile' },
                     { icon: 'heart-outline', label: 'Favorites' },
                     { icon: 'bookmark-outline', label: 'Saved' },
                 ].map((item: any, index) => (
-                    <TouchableOpacity key={index} style={styles.menuItem}>
+                    <TouchableOpacity key={index} style={styles.menuItem} onPress={() => {
+                        if (item.action === 'purchased') {
+                            router.push('/purchased');
+                            return;
+                        }
+                    }}>
                         <Ionicons name={item.icon} size={24} color="#333" />
                         <Text style={styles.menuText}>{item.label}</Text>
                         <Ionicons name="chevron-forward" size={20} color="#999" />

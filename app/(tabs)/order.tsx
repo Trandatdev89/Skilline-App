@@ -1,12 +1,13 @@
 import { AuthApi, UserEntity } from '@/api/AuthApi';
 import OrderApi from '@/api/OrderApi';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect, useState } from 'react';
 import { Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function OrderPage() {
     const params = useLocalSearchParams();
+    const router = useRouter();
     const courseId = params.courseId ?? '';
     const title = (params.title && decodeURIComponent(params.title as string)) || 'Course';
     const price = Number(params.price) || 0;
@@ -38,7 +39,6 @@ export default function OrderPage() {
         return () => { mounted = false; };
     }, []);
 
-    // Render as a vertical stack (column)
 
     const handlePay = async () => {
 
@@ -64,7 +64,6 @@ export default function OrderPage() {
             console.log(responsePaymentOnline);
             console.log(responsePaymentOnline.url);
 
-            // Handle VNPay redirect based on platform
             const paymentUrl = responsePaymentOnline.url;
             if (!paymentUrl) {
                 alert('Không lấy được URL thanh toán');
@@ -72,11 +71,13 @@ export default function OrderPage() {
             }
 
             if (Platform.OS === 'web') {
-                // Web: redirect directly
                 (window as any).location.href = paymentUrl;
+                setTimeout(() => {
+                    router.replace('/success');
+                }, 2000);
             } else {
-                // iOS/Android: open in WebBrowser
                 await WebBrowser.openBrowserAsync(paymentUrl);
+                router.replace('/success');
             }
         }
 

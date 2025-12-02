@@ -101,6 +101,20 @@ export default function TabsLayout() {
                     href: null, // hide from bottom nav
                 }}
             />
+            <Tabs.Screen
+                name="success"
+                options={{
+                    title: 'Success',
+                    href: null, // hide from bottom nav
+                }}
+            />
+            <Tabs.Screen
+                name="purchased"
+                options={{
+                    title: 'Purchased',
+                    href: null, // hide from bottom nav
+                }}
+            />
         </Tabs>
     )
 }

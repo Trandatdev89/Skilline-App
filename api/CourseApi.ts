@@ -1,9 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-// Read BASE_URL from environment or fallback to localhost
 const BASE_URL = (process.env.BASE_URL as string) || 'http://localhost:8080';
 
-// Axios instance for course API calls
 const api = axios.create({
     baseURL: BASE_URL,
     headers: {
@@ -11,7 +10,19 @@ const api = axios.create({
     },
 });
 
-// ============ Types ============
+// Attach access token (if present) to all CourseApi requests
+api.interceptors.request.use(async (config) => {
+    try {
+        const token = await AsyncStorage.getItem('accessToken');
+        if (token && config && config.headers) {
+            config.headers['Authorization'] = `Bearer ${token}`;
+        }
+    } catch (err) {
+        // ignore
+    }
+    return config;
+}, (error) => Promise.reject(error));
+
 export enum LevelEnum {
     BEGINNER = 'BEGINNER',
     INTERMEDIATE = 'INTERMEDIATE',
@@ -44,7 +55,17 @@ export interface ApiResponse<T = any> {
     data?: T;
 }
 
-// ============ API Functions ============
+export interface CourseProjection {
+    id: number;
+    title: string;
+    categoryName?: string;
+    description?: string;
+    thumbnailUrl?: string;
+    level?: string;
+    price?: number;
+    rate?: number;
+}
+
 async function getCourses(
     page: number = 0,
     size: number = 10,
@@ -64,6 +85,11 @@ async function getCourses(
 
 export const CourseApi = {
     getCourses,
+    // get purchased courses for current user
+    async getPurchasedCourses(): Promise<ApiResponse<CourseProjection[]>> {
+        const res = await api.get('/api/enrollment/buy');
+        return res.data as ApiResponse<CourseProjection[]>;
+    },
 };
 
 export default CourseApi;
