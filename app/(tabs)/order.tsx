@@ -58,7 +58,9 @@ export default function OrderPage() {
             const responsePaymentOnline = await OrderApi.vnPayment({
                 'orderId': parseInt(responseOrder?.data.id),
                 'amount': responseOrder?.data.totalPrice,
-                'orderInfo': `Nguời dùng có id ${responseOrder?.data.userId} chuyển khoản`
+                'orderInfo': `Nguời dùng có id ${responseOrder?.data.userId} chuyển khoản`,
+                'courses': Array.of(courseId),
+                'userId': responseOrder?.data.userId
             })
 
             console.log(responsePaymentOnline);
