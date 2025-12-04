@@ -1,33 +1,116 @@
 // app/lecture.tsx hoặc app/(tabs)/lecture.tsx
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import LectureApi, { LectureResponse, getVideoStreamUrl } from '@/api/LectureApi';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { WebView } from 'react-native-webview';
 
-interface Lecture {
-    id: number;
-    title: string;
+interface LectureWithExpanded extends LectureResponse {
     expanded: boolean;
 }
 
 export default function LectureScreen() {
-    const [lectures, setLectures] = useState<Lecture[]>([
-        { id: 1, title: 'Bài 1 : Vì sao nên học lập trình Python | Công cụ, tài liệu học Python', expanded: false },
-        { id: 2, title: 'Bài 2 : Câu lệnh print và các kiểu dữ liệu trong Python', expanded: false },
-        { id: 3, title: 'Bài 3 : Chú thích trong Python', expanded: false },
-        { id: 4, title: 'Bài 4 : Biến và Kiểu dữ liệu trong Python | Ép kiểu', expanded: false },
-        { id: 5, title: 'Bài 5 : Toán tử trong Python', expanded: false },
-        { id: 6, title: 'Bài 6 : Nhập dữ liệu từ bàn phím trong Python bằng hàm input và hàm map', expanded: false },
-        { id: 7, title: 'Bài 7 : Các hàm phổ biến trong Python (sqrt, pow, floor, factorial, gcd, sum..)', expanded: false },
-        { id: 8, title: 'Bài 8 : Cấu trúc rẽ nhánh (if else) trong Python', expanded: false },
-        { id: 9, title: 'Bài 9 : Hướng dẫn sử dụng website chấm bài Hackerrank', expanded: false },
-        { id: 10, title: 'Bài 10 : Hướng dẫn contest 0 (Làm quen Hackerrank) từ bài 1 tới bài 5', expanded: false },
-    ]);
+    const { courseId } = useLocalSearchParams();
+    const [lectures, setLectures] = useState<LectureWithExpanded[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [selectedLectureId, setSelectedLectureId] = useState<string | null>(null);
+    const [selectedLectureTitle, setSelectedLectureTitle] = useState<string>('');
+    const [showVideoModal, setShowVideoModal] = useState(false);
+    const [videoStreamUrl, setVideoStreamUrl] = useState<string | null>(null);
+    const [isLoadingVideo, setIsLoadingVideo] = useState(false);
 
-    const toggleLecture = (id: number) => {
+    useEffect(() => {
+        fetchLectures();
+    }, [courseId]);
+
+    const fetchLectures = async () => {
+        try {
+            setIsLoading(true);
+            setError(null);
+
+            if (!courseId) {
+                setError('Course ID is required');
+                return;
+            }
+
+            const response = await LectureApi.getLecturesNotPagi(courseId as string);
+
+            if (response.code === 200 && response.data) {
+                // Map API data to include expanded state
+                const lecturesWithExpanded = response.data.map(lecture => ({
+                    ...lecture,
+                    expanded: false,
+                }));
+                setLectures(lecturesWithExpanded);
+            } else {
+                setError(response.message || 'Failed to fetch lectures');
+            }
+        } catch (err) {
+            console.error('[LectureScreen] Fetch error:', err);
+            setError('Failed to fetch lectures. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const toggleLecture = (id: string) => {
         setLectures(lectures.map(lecture =>
             lecture.id === id ? { ...lecture, expanded: !lecture.expanded } : lecture
         ));
     };
+
+    const handlePlayVideo = async (lectureId: string) => {
+        try {
+            setIsLoadingVideo(true);
+            setShowVideoModal(true);
+            const streamUrl = await getVideoStreamUrl(lectureId);
+            setVideoStreamUrl(streamUrl);
+        } catch (err) {
+            console.error('[LectureScreen] Error loading video stream:', err);
+            alert('Failed to load video. Please try again.');
+            setShowVideoModal(false);
+        } finally {
+            setIsLoadingVideo(false);
+        }
+    };
+
+    const closeVideoModal = () => {
+        setShowVideoModal(false);
+        setVideoStreamUrl(null);
+        setSelectedLectureId(null);
+    };
+
+    if (isLoading) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color="#00b4d8" />
+                <Text style={{ marginTop: 10, color: '#666' }}>Đang tải nội dung khóa học...</Text>
+            </View>
+        );
+    }
+
+    if (error) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
+                <Text style={[styles.errorText, { marginTop: 16 }]}>{error}</Text>
+                <TouchableOpacity style={styles.retryButton} onPress={fetchLectures}>
+                    <Text style={styles.retryButtonText}>Thử lại</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    if (lectures.length === 0) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <Ionicons name="book-outline" size={48} color="#ccc" />
+                <Text style={{ marginTop: 16, color: '#999', fontSize: 16 }}>Không có bài giảng nào</Text>
+            </View>
+        );
+    }
 
     return (
         <ScrollView style={styles.container}>
@@ -38,8 +121,8 @@ export default function LectureScreen() {
 
             {/* Section Header */}
             <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>
-                    PHẦN 1 : KIỂU DỮ LIỆU, VÒNG LẶP, HÀM, TOÁN TỬ
+                <Text style={styles.sectionTitle} numberOfLines={2}>
+                    {lectures[0]?.courseName || 'Khóa học'}
                 </Text>
                 <TouchableOpacity style={styles.timelineButton}>
                     <Text style={styles.timelineText}>Timeline</Text>
@@ -48,7 +131,7 @@ export default function LectureScreen() {
 
             {/* Lecture List */}
             <View style={styles.lectureList}>
-                {lectures.map((lecture) => (
+                {lectures.map((lecture, index) => (
                     <View key={lecture.id}>
                         <TouchableOpacity
                             style={styles.lectureItem}
@@ -60,15 +143,32 @@ export default function LectureScreen() {
                                     size={24}
                                     color="#333"
                                 />
-                                <Text style={styles.lectureTitle}>{lecture.title}</Text>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.lecturePosition}>
+                                        Bài {lecture.position || index + 1}
+                                    </Text>
+                                    <Text style={styles.lectureTitle} numberOfLines={2}>
+                                        {lecture.title}
+                                    </Text>
+                                    {lecture.duration && (
+                                        <Text style={styles.lectureDuration}>{lecture.duration}</Text>
+                                    )}
+                                </View>
                             </View>
-                            <TouchableOpacity style={styles.linkButton}>
+                            <TouchableOpacity
+                                style={styles.linkButton}
+                                onPress={() => {
+                                    setSelectedLectureId(lecture.id);
+                                    setSelectedLectureTitle(lecture.title || 'Video Lecture');
+                                    handlePlayVideo(lecture.id);
+                                }}
+                            >
                                 <Text style={styles.linkText}>Vào học</Text>
                             </TouchableOpacity>
                         </TouchableOpacity>
 
                         {/* Separator */}
-                        {lecture.id !== lectures.length && (
+                        {index !== lectures.length - 1 && (
                             <View style={styles.separator} />
                         )}
                     </View>
@@ -77,8 +177,99 @@ export default function LectureScreen() {
 
             {/* Add more sections if needed */}
             <View style={styles.bottomPadding} />
+
+            {/* Video Modal Dialog */}
+            <Modal
+                visible={showVideoModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={closeVideoModal}
+            >
+                <View style={styles.modalContainer}>
+                    {/* Modal Header */}
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle} numberOfLines={1}>
+                            {selectedLectureTitle}
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.closeButton}
+                            onPress={closeVideoModal}
+                        >
+                            <Ionicons name="close" size={28} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Video Player Container */}
+                    {isLoadingVideo ? (
+                        <View style={styles.videoLoadingContainer}>
+                            <ActivityIndicator size="large" color="#00b4d8" />
+                            <Text style={styles.videoLoadingText}>Đang tải video...</Text>
+                        </View>
+                    ) : videoStreamUrl ? (
+                        <View style={styles.videoContainer}>
+                            <WebView
+                                source={{ html: getVideoPlayerHtml(videoStreamUrl) }}
+                                style={styles.webview}
+                                scalesPageToFit={true}
+                                javaScriptEnabled={true}
+                                allowsFullscreenVideo={true}
+                            />
+                        </View>
+                    ) : (
+                        <View style={styles.videoErrorContainer}>
+                            <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
+                            <Text style={styles.videoErrorText}>Không thể tải video</Text>
+                            <TouchableOpacity
+                                style={styles.retryVideoButton}
+                                onPress={() => {
+                                    if (selectedLectureId) {
+                                        handlePlayVideo(selectedLectureId);
+                                    }
+                                }}
+                            >
+                                <Text style={styles.retryVideoButtonText}>Thử lại</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
+            </Modal>
         </ScrollView>
     );
+}
+
+// Helper function to generate HTML for video player
+function getVideoPlayerHtml(videoUrl: string): string {
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body {
+                    margin: 0;
+                    padding: 0;
+                    background-color: #000;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                }
+                video {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: contain;
+                }
+            </style>
+        </head>
+        <body>
+            <video controls>
+                <source src="${videoUrl}" type="application/x-mpegURL">
+                Your browser does not support the video tag.
+            </video>
+        </body>
+        </html>
+    `;
 }
 
 const styles = StyleSheet.create({
@@ -137,11 +328,22 @@ const styles = StyleSheet.create({
         flex: 1,
         gap: 12,
     },
+    lecturePosition: {
+        fontSize: 12,
+        color: '#00b4d8',
+        fontWeight: '600',
+        marginBottom: 4,
+    },
     lectureTitle: {
         fontSize: 15,
         color: '#333',
         flex: 1,
         lineHeight: 22,
+    },
+    lectureDuration: {
+        fontSize: 12,
+        color: '#999',
+        marginTop: 4,
     },
     linkButton: {
         marginLeft: 12,
@@ -159,5 +361,90 @@ const styles = StyleSheet.create({
     },
     bottomPadding: {
         height: 40,
+    },
+    errorText: {
+        color: '#ef4444',
+        fontSize: 16,
+        textAlign: 'center',
+    },
+    retryButton: {
+        backgroundColor: '#00b4d8',
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 8,
+        marginTop: 16,
+    },
+    retryButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
+        textAlign: 'center',
+    },
+    // Video Modal Styles
+    modalContainer: {
+        flex: 1,
+        backgroundColor: '#000',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: '#1a1a1a',
+        borderBottomWidth: 1,
+        borderBottomColor: '#333',
+    },
+    modalTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#fff',
+        flex: 1,
+        marginRight: 12,
+    },
+    closeButton: {
+        padding: 8,
+    },
+    videoContainer: {
+        flex: 1,
+        backgroundColor: '#000',
+    },
+    webview: {
+        flex: 1,
+    },
+    videoLoadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#000',
+    },
+    videoLoadingText: {
+        color: '#fff',
+        fontSize: 14,
+        marginTop: 12,
+    },
+    videoErrorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#000',
+    },
+    videoErrorText: {
+        color: '#ef4444',
+        fontSize: 16,
+        marginTop: 12,
+    },
+    retryVideoButton: {
+        backgroundColor: '#00b4d8',
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 8,
+        marginTop: 16,
+    },
+    retryVideoButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
+        textAlign: 'center',
     },
 });
