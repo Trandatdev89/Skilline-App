@@ -1,10 +1,11 @@
 // app/lecture.tsx hoặc app/(tabs)/lecture.tsx
-import LectureApi, { LectureResponse, getVideoStreamUrl } from '@/api/LectureApi';
+import LectureApi, { LectureResponse } from '@/api/LectureApi';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { WebView } from 'react-native-webview';
+import Video from 'react-native-video';
 
 interface LectureWithExpanded extends LectureResponse {
     expanded: boolean;
@@ -15,15 +16,44 @@ export default function LectureScreen() {
     const [lectures, setLectures] = useState<LectureWithExpanded[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [selectedLectureId, setSelectedLectureId] = useState<string | null>(null);
-    const [selectedLectureTitle, setSelectedLectureTitle] = useState<string>('');
     const [showVideoModal, setShowVideoModal] = useState(false);
-    const [videoStreamUrl, setVideoStreamUrl] = useState<string | null>(null);
+    const [selectedLectureTitle, setSelectedLectureTitle] = useState<string>('');
+    const [selectedLectureId, setSelectedLectureId] = useState<string>('');
+    const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const [isLoadingVideo, setIsLoadingVideo] = useState(false);
+    const [isEnrolled, setIsEnrolled] = useState<boolean | null>(null);
+    const [checkingEnrollment, setCheckingEnrollment] = useState(true);
 
     useEffect(() => {
+        checkEnrollment();
         fetchLectures();
     }, [courseId]);
+
+    const checkEnrollment = async () => {
+        try {
+            setCheckingEnrollment(true);
+
+            if (!courseId) {
+                setIsEnrolled(false);
+                return;
+            }
+
+            const response = await LectureApi.checkUserEnrollment(courseId as string);
+
+            if (response.code === 200 && response.data !== undefined) {
+                setIsEnrolled(response.data);
+                console.log('[LectureScreen] Enrollment status:', response.data);
+            } else {
+                console.error('[LectureScreen] Failed to check enrollment:', response.message);
+                setIsEnrolled(false);
+            }
+        } catch (err) {
+            console.error('[LectureScreen] Enrollment check error:', err);
+            setIsEnrolled(false);
+        } finally {
+            setCheckingEnrollment(false);
+        }
+    };
 
     const fetchLectures = async () => {
         try {
@@ -61,28 +91,50 @@ export default function LectureScreen() {
         ));
     };
 
-    const handlePlayVideo = async (lectureId: string) => {
+    const openVideoModal = (lectureTitle: string) => {
+        setSelectedLectureTitle(lectureTitle);
+        setShowVideoModal(true);
+    };
+
+    const closeVideoModal = () => {
+        setShowVideoModal(false);
+        setSelectedLectureTitle('');
+        setSelectedLectureId('');
+        setVideoUrl(null);
+    };
+
+    const fetchVideoStream = async (lectureId: string) => {
         try {
             setIsLoadingVideo(true);
-            setShowVideoModal(true);
-            const streamUrl = await getVideoStreamUrl(lectureId);
-            setVideoStreamUrl(streamUrl);
+            const token = await AsyncStorage.getItem('accessToken');
+
+            const response = await fetch(
+                `http://localhost:8080/api/lecture/stream/${lectureId}`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                }
+            );
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                setVideoUrl(url);
+                setSelectedLectureId(lectureId);
+            } else {
+                console.error('Failed to fetch video:', response.status);
+                alert('Không thể tải video. Vui lòng thử lại.');
+            }
         } catch (err) {
-            console.error('[LectureScreen] Error loading video stream:', err);
-            alert('Failed to load video. Please try again.');
-            setShowVideoModal(false);
+            console.error('[LectureScreen] Error fetching video stream:', err);
+            alert('Lỗi: Không thể tải video');
         } finally {
             setIsLoadingVideo(false);
         }
     };
 
-    const closeVideoModal = () => {
-        setShowVideoModal(false);
-        setVideoStreamUrl(null);
-        setSelectedLectureId(null);
-    };
-
-    if (isLoading) {
+    if (isLoading || checkingEnrollment) {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
                 <ActivityIndicator size="large" color="#00b4d8" />
@@ -103,7 +155,7 @@ export default function LectureScreen() {
         );
     }
 
-    if (lectures.length === 0) {
+    if (lectures.length === 0 && isEnrolled !== false) {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
                 <Ionicons name="book-outline" size={48} color="#ccc" />
@@ -145,7 +197,7 @@ export default function LectureScreen() {
                                 />
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.lecturePosition}>
-                                        Bài {lecture.position || index + 1}
+                                        Bài {index + 1}
                                     </Text>
                                     <Text style={styles.lectureTitle} numberOfLines={2}>
                                         {lecture.title}
@@ -155,16 +207,22 @@ export default function LectureScreen() {
                                     )}
                                 </View>
                             </View>
-                            <TouchableOpacity
-                                style={styles.linkButton}
-                                onPress={() => {
-                                    setSelectedLectureId(lecture.id);
-                                    setSelectedLectureTitle(lecture.title || 'Video Lecture');
-                                    handlePlayVideo(lecture.id);
-                                }}
-                            >
-                                <Text style={styles.linkText}>Vào học</Text>
-                            </TouchableOpacity>
+                            {isEnrolled && (
+                                <TouchableOpacity
+                                    style={styles.linkButton}
+                                    onPress={() => {
+                                        openVideoModal(lecture.title || 'Video Lecture');
+                                        fetchVideoStream(lecture.id);
+                                    }}
+                                >
+                                    <Text style={styles.linkText}>Vào học</Text>
+                                </TouchableOpacity>
+                            )}
+                            {!isEnrolled && (
+                                <View style={styles.lockIcon}>
+                                    <Ionicons name="lock-closed" size={20} color="#ff9500" />
+                                </View>
+                            )}
                         </TouchableOpacity>
 
                         {/* Separator */}
@@ -182,63 +240,67 @@ export default function LectureScreen() {
             <Modal
                 visible={showVideoModal}
                 animationType="slide"
-                transparent={true}
+                transparent={false}
                 onRequestClose={closeVideoModal}
             >
                 <View style={styles.modalContainer}>
                     {/* Modal Header */}
                     <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle} numberOfLines={1}>
-                            {selectedLectureTitle}
-                        </Text>
                         <TouchableOpacity
                             style={styles.closeButton}
                             onPress={closeVideoModal}
                         >
-                            <Ionicons name="close" size={28} color="#fff" />
+                            <Ionicons name="chevron-back" size={28} color="#fff" />
                         </TouchableOpacity>
+                        <Text style={styles.modalTitle} numberOfLines={1}>
+                            {selectedLectureTitle}
+                        </Text>
+                        <View style={{ width: 28 }} />
                     </View>
 
                     {/* Video Player Container */}
-                    {isLoadingVideo ? (
-                        <View style={styles.videoLoadingContainer}>
-                            <ActivityIndicator size="large" color="#00b4d8" />
-                            <Text style={styles.videoLoadingText}>Đang tải video...</Text>
-                        </View>
-                    ) : videoStreamUrl ? (
-                        <View style={styles.videoContainer}>
-                            <WebView
-                                source={{ html: getVideoPlayerHtml(videoStreamUrl) }}
-                                style={styles.webview}
-                                scalesPageToFit={true}
-                                javaScriptEnabled={true}
-                                allowsFullscreenVideo={true}
-                            />
-                        </View>
-                    ) : (
-                        <View style={styles.videoErrorContainer}>
-                            <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
-                            <Text style={styles.videoErrorText}>Không thể tải video</Text>
-                            <TouchableOpacity
-                                style={styles.retryVideoButton}
-                                onPress={() => {
-                                    if (selectedLectureId) {
-                                        handlePlayVideo(selectedLectureId);
-                                    }
+                    <View style={styles.videoContainer}>
+                        {isLoadingVideo ? (
+                            <View style={styles.loadingContainer}>
+                                <ActivityIndicator size="large" color="#00b4d8" />
+                                <Text style={styles.loadingText}>Đang tải video...</Text>
+                            </View>
+                        ) : videoUrl ? (
+                            <Video
+                                source={{
+                                    uri: videoUrl
                                 }}
-                            >
-                                <Text style={styles.retryVideoButtonText}>Thử lại</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
+                                style={styles.videoPlayer}
+                                controls={true}
+                                resizeMode="contain"
+                                onError={(error: any) => {
+                                    console.log('Video error:', error);
+                                    alert('Lỗi phát video');
+                                }}
+                            />
+                        ) : (
+                            <View style={styles.loadingContainer}>
+                                <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
+                                <Text style={styles.errorMessage}>Không thể tải video</Text>
+                            </View>
+                        )}
+                    </View>
                 </View>
             </Modal>
         </ScrollView>
     );
 }
 
-// Helper function to generate HTML for video player
-function getVideoPlayerHtml(videoUrl: string): string {
+// Helper function to generate YouTube player HTML
+function getYouTubePlayerHtml(youtubeUrl: string): string {
+    // Extract video ID from YouTube URL
+    let videoId = '';
+    if (youtubeUrl.includes('youtube.com/watch?v=')) {
+        videoId = youtubeUrl.split('v=')[1]?.split('&')[0] || '';
+    } else if (youtubeUrl.includes('youtu.be/')) {
+        videoId = youtubeUrl.split('youtu.be/')[1]?.split('?')[0] || '';
+    }
+
     return `
         <!DOCTYPE html>
         <html>
@@ -250,23 +312,33 @@ function getVideoPlayerHtml(videoUrl: string): string {
                     margin: 0;
                     padding: 0;
                     background-color: #000;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    height: 100vh;
                 }
-                video {
+                .container {
+                    position: relative;
+                    width: 100%;
+                    padding-bottom: 56.25%; /* 16:9 */
+                    height: 0;
+                }
+                iframe {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
                     width: 100%;
                     height: 100%;
-                    object-fit: contain;
+                    border: none;
                 }
             </style>
         </head>
         <body>
-            <video controls>
-                <source src="${videoUrl}" type="application/x-mpegURL">
-                Your browser does not support the video tag.
-            </video>
+            <div class="container">
+                <iframe
+                    width="100%"
+                    height="100%"
+                    src="https://www.youtube.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen
+                ></iframe>
+            </div>
         </body>
         </html>
     `;
@@ -354,6 +426,11 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         textDecorationLine: 'underline',
     },
+    lockIcon: {
+        marginLeft: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     separator: {
         height: 1,
         backgroundColor: '#e0e0e0',
@@ -400,7 +477,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#fff',
         flex: 1,
-        marginRight: 12,
+        textAlign: 'center',
     },
     closeButton: {
         padding: 8,
@@ -408,43 +485,54 @@ const styles = StyleSheet.create({
     videoContainer: {
         flex: 1,
         backgroundColor: '#000',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    webview: {
-        flex: 1,
+    videoPlayer: {
+        width: '100%',
+        height: '100%',
     },
-    videoLoadingContainer: {
+    loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#000',
     },
-    videoLoadingText: {
+    loadingText: {
         color: '#fff',
-        fontSize: 14,
+        fontSize: 16,
         marginTop: 12,
     },
-    videoErrorContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#000',
-    },
-    videoErrorText: {
+    errorMessage: {
         color: '#ef4444',
         fontSize: 16,
         marginTop: 12,
     },
-    retryVideoButton: {
-        backgroundColor: '#00b4d8',
+    videoPlaceholder: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#000',
+    },
+    videoText: {
+        color: '#fff',
+        fontSize: 18,
+        marginTop: 16,
+        fontWeight: '600',
+    },
+    openButton: {
+        backgroundColor: '#ff0000',
         paddingHorizontal: 24,
         paddingVertical: 12,
         borderRadius: 8,
-        marginTop: 16,
+        marginTop: 20,
     },
-    retryVideoButtonText: {
+    openButtonText: {
         color: '#fff',
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: '600',
-        textAlign: 'center',
+    },
+    webview: {
+        flex: 1,
     },
 });

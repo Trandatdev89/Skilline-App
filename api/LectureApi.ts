@@ -44,8 +44,14 @@ async function getLecturesNotPagi(courseId: number | string): Promise<ApiRespons
     return res.data as ApiResponse<LectureResponse[]>;
 }
 
+async function checkUserEnrollment(courseId: number | string): Promise<ApiResponse<boolean>> {
+    const res = await api.get(`/api/enrollment/check?courseId=${courseId}`);
+    return res.data as ApiResponse<boolean>;
+}
+
 export const LectureApi = {
     getLecturesNotPagi,
+    checkUserEnrollment,
 };
 
 // Helper to get HLS stream URL with authorization header
