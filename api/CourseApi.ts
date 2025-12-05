@@ -83,8 +83,17 @@ async function getCourses(
     return res.data as ApiResponse<PageResponse<CourseResponse>>;
 }
 
+async function getCourseByCategory(
+    categoryId: number
+): Promise<ApiResponse<PageResponse<CourseResponse>>> {
+    const res = await api.get(`/api/course?categoryId=${categoryId}`);
+    console.log('[CourseApi] getCourseByCategory Response:', res.data);
+    return res.data as ApiResponse<PageResponse<CourseResponse>>;
+}
+
 export const CourseApi = {
     getCourses,
+    getCourseByCategory,
     // get purchased courses for current user
     async getPurchasedCourses(): Promise<ApiResponse<CourseProjection[]>> {
         const res = await api.get('/api/enrollment/buy');

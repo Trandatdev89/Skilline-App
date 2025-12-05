@@ -1,29 +1,59 @@
 import { CourseApi, CourseResponse } from '@/api/CourseApi';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import LectureApi, { LectureResponse } from '@/api/LectureApi';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function CourseScreen() {
+    const params = useLocalSearchParams();
+    const router = useRouter();
+    const categoryId = params.categoryId ? parseInt(params.categoryId as string) : null;
+    const categoryName = params.categoryName as string | null;
+
     const [courses, setCourses] = useState<CourseResponse[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [shouldShowAll, setShouldShowAll] = useState(false);
+
+    // When screen is focused from navigation tab, clear params to show all courses
+    useFocusEffect(
+        useCallback(() => {
+            // If no params and coming from tab navigation, show all courses
+            if (!categoryId) {
+                setShouldShowAll(true);
+            } else {
+                setShouldShowAll(false);
+            }
+        }, [categoryId])
+    );
 
     useEffect(() => {
         fetchCourses();
-    }, []);
+    }, [categoryId, shouldShowAll]);
 
     const fetchCourses = async () => {
         try {
             setIsLoading(true);
             setError(null);
-            const resp = await CourseApi.getCourses(1, 1000);
+
+            let resp;
+            if (categoryId && !shouldShowAll) {
+                // Fetch courses filtered by category (only when categoryId param exists from Category screen)
+                console.log('[CourseScreen] Fetching courses for category:', categoryId);
+                resp = await CourseApi.getCourseByCategory(categoryId);
+            } else {
+                // Fetch all courses from all categories
+                console.log('[CourseScreen] Fetching all courses');
+                resp = await CourseApi.getCourses(1, 1000);
+            }
 
             console.log('[CourseScreen] API Response:', resp);
 
             if (resp.code === 200 && resp.data) {
-                setCourses(resp.data.list || []);
+                // Handle both array and paginated response formats
+                const courseList = Array.isArray(resp.data) ? resp.data : (resp.data.list || []);
+                setCourses(courseList);
             } else {
                 setError(resp.message || 'Failed to fetch courses');
             }
@@ -57,13 +87,23 @@ export default function CourseScreen() {
     if (courses.length === 0) {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={styles.noCourseText}>No courses available</Text>
+                <Text style={styles.noCourseText}>
+                    {categoryName ? `No courses in "${categoryName}"` : 'No courses available'}
+                </Text>
             </View>
         );
     }
 
     return (
         <ScrollView style={styles.container}>
+            {categoryName && (
+                <View style={styles.categoryHeader}>
+                    <Text style={styles.categoryHeaderTitle}>{categoryName}</Text>
+                    <Text style={styles.categoryHeaderSubtitle}>
+                        {courses.length} {courses.length === 1 ? 'course' : 'courses'} available
+                    </Text>
+                </View>
+            )}
             {courses.map((course) => (
                 <CourseCard key={course.id} course={course} />
             ))}
@@ -90,7 +130,7 @@ function CourseCard({ course }: CourseCardProps) {
         try {
             setIsLoadingLectures(true);
             const response = await LectureApi.getLecturesNotPagi(course.id);
-            
+
             if (response.code === 200 && response.data) {
                 const lecturesWithExpanded = response.data.map(lecture => ({
                     ...lecture,
@@ -140,10 +180,10 @@ function CourseCard({ course }: CourseCardProps) {
 
                     {/* Expand Icon */}
                     <View style={styles.expandIcon}>
-                        <Ionicons 
-                            name={isExpanded ? "chevron-up" : "chevron-down"} 
-                            size={24} 
-                            color="#fff" 
+                        <Ionicons
+                            name={isExpanded ? "chevron-up" : "chevron-down"}
+                            size={24}
+                            color="#fff"
                         />
                     </View>
                 </View>
@@ -406,6 +446,25 @@ const styles = StyleSheet.create({
     },
     noCourseText: {
         fontSize: 16,
+        color: '#666',
+    },
+    categoryHeader: {
+        backgroundColor: '#fff',
+        paddingHorizontal: 20,
+        paddingTop: 16,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+        marginBottom: 8,
+    },
+    categoryHeaderTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#1a1a1a',
+        marginBottom: 4,
+    },
+    categoryHeaderSubtitle: {
+        fontSize: 14,
         color: '#666',
     },
     expandIcon: {
